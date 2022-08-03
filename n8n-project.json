@@ -1,0 +1,461 @@
+{
+  "name": "n8n-clickup-task-hours-to-google-sheet-integration",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "upsert",
+        "sheetId": "1StihQlg37IKbOvOrc62JRa0a9bfBr4NnC-5mOOhAjJQ",
+        "range": "A:L",
+        "options": {}
+      },
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -180
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "5",
+          "name": "Google account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "let res = items[0].json.data.map((item,i)=>{\n\t\tvar d1 = new Date( parseInt(item.at     ))\n\t\tvar d2 = new Date( parseInt(item.start  ))\n\t\tvar d3 = new Date( parseInt(item.end    ))\n\t\treturn {\n\t\t\t\t\t\tjson: {\n\t\t\t\t\t\t\t\t\tid : String(i),\t\t\t\n\t\t\t\t\t\t\t\t\tat         : d1.toISOString().split('T')[0],\n\t\t\t\t\t\t\t\t\tstart      : d2.toISOString().split('T')[0],\n\t\t\t\t\t\t\t\t\tend        : d3.toISOString().split('T')[0],\n\t\t\t\t\t\t\t\t\ttaskid     : item.task.id,\n\t\t\t\t\t\t\t\t\ttaskname   : item.task.name,\n\t\t\t\t\t\t\t\t\tdescription: item.description,\n\t\t\t\t\t\t\t\t\tduration   : String((Number(parseFloat(item.duration)/(1000*60*60)).toFixed(2))).replace('.',','),\n\t\t\t\t\t\t\t\t\temail      : item.user.email,\n\t\t\t\t\t\t\t\t\tlist_id    : item.task_location.list_id,\n\t\t\t\t\t\t\t\t\tfolder_id  : item.task_location.folder_id,\n\t\t\t\t\t\t\t\t\tspace_id   : item.task_location.space_id,\n\t\t\t\t\t\t\t\t\t//item\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\n})\n\nreturn res;"
+      },
+      "name": "fun_time_intervals_clean",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        20,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.clickup.com/api/v2/task/{{$node[\"fun_wait\"].json[\"taskid\"]}}",
+        "options": {
+          "batchInterval": 1000
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "pk_54145488_FF9RXLT4UAEFA8BXAR7AWF59RH8SB25L"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "name": "api_call_task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        600,
+        280
+      ],
+      "alwaysOutputData": true,
+      "notesInFlow": false,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n// Tip: You can use luxon for dates and $jmespath for querying JSON structures\n//console.log(items)\n// Loop over inputs and add a new field called 'myNewField' to the JSON of each one\n  const iarr = items.map((item,i)=> {\n  let deleted = false ;\n  let errormsg = ''\n  //let id;\n  let taskid;\n  if(item.json.taskid !==  null  ){\n     deleted = false ;\n     taskid= item.json.id;\n     //taskid=item.json.taskid;\n    \n  } \n  else \n  {\n    console.log('ERROREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE',item.json.taskid )\n    //id=''\n    taskid=''\n    deleted = true;\n    errormsg  = 'error'\n\n  }\n    \n    return {json:{\n     //id,\n     taskid,\n      deleted,\n     // errormsg,\n      \n     \n\n    }\n    }\n  })\n\nconsole.log('IARRRRR',iarr)\n// You can write logs to the browser console\n//console.log('Done!');\n\nreturn iarr;"
+      },
+      "name": "fun_split",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        960,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n// Tip: You can use luxon for dates and $jmespath for querying JSON structures\n\n// Loop over inputs and add a new field called 'myNewField' to the JSON of each one\nfor (item of items) {\n  console.log('DELETED')\n  console.log(item.json)\n}\n\n\n\nreturn items;"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$node[\"fun_split\"].json[\"deleted\"]}}",
+              "value2": "={{false}}"
+            }
+          ]
+        }
+      },
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        240,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": true,
+              "value2": "={{$node[\"SplitInBatches\"].context[\"noItemsLeft\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "IF1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        860,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "console.log('finito')\nreturn items;"
+      },
+      "name": "Function3",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const waitTimeSeconds = 3;\n\n new Promise((resolve) => {\n  setTimeout(() => {\n    resolve(items);\n  }, waitTimeSeconds * 1000);\n});\n\nreturn items;\n"
+      },
+      "name": "fun_wait",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        420,
+        280
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        -180
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "functionCode": "console.log('--->COSA ENTRA I COMBINAZIONE')\nconsole.log(items)\nconsole.log('-----------------------------')\n\nlet searchtaskid= ''\nitems.map((item,i )=>{\n  if (i == 0){\n    searchtaskid = item.json.taskid\n  }  \n})\n\nlet res = items.map((jtem,j )=>{\n   \n    if (j>0 && jtem.json.taskid == searchtaskid){\n    \n      return  {\n        \t        id         : jtem.json.id\t,\t\n\t\t\t\t\t\t\t\t\tat         : jtem.json.at,\n\t\t\t\t\t\t\t\t\tstart      : jtem.json.start,\n\t\t\t\t\t\t\t\t\tend        : jtem.json.end,\n\t\t\t\t\t\t\t\t\ttaskid     : jtem.json.taskid,\n\t\t\t\t\t\t\t\t\ttaskname   : jtem.json.taskname,\n\t\t\t\t\t\t\t\t\tdescription: jtem.json.description,\n\t\t\t\t\t\t\t\t\tduration   : jtem.json.duration,\n\t\t\t\t\t\t\t\t\temail      : jtem.json.email,\n\t\t\t\t\t\t\t\t\tlist_id    : jtem.json.list_id,\n\t\t\t\t\t\t\t\t\tfolder_id  : jtem.json.folder_id,\n\t\t\t\t\t\t\t\t\tspace_id   : jtem.json.space_id,\n      }\n    \n      \n    } \n})\nconst res2 = res.filter(element => {\n \n  if (element !== null){\n  return element;}\n});\n\nreturn res2"
+      },
+      "name": "COMBINATO",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1660,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n// Tip: You can use luxon for dates and $jmespath for querying JSON structures\n\n// Loop over inputs and add a new field called 'myNewField' to the JSON of each one\nlet res = items.map((item)=>{\n  return {json:{\ntaskid:item.json.taskid\n\n  }}\n})\n\nreturn res;"
+      },
+      "name": "Function1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.clickup.com/api/v2/team/2571967/time_entries",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "pk_54145488_FF9RXLT4UAEFA8BXAR7AWF59RH8SB25L"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "name": "api_call_task1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        280
+      ],
+      "alwaysOutputData": true,
+      "notesInFlow": false,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://api.clickup.com/api/v2/team/2571967/time_entries",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "pk_54145488_FF9RXLT4UAEFA8BXAR7AWF59RH8SB25L"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "name": "api_call_task2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        -160
+      ],
+      "alwaysOutputData": true,
+      "notesInFlow": false,
+      "continueOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "api_call_task1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fun_time_intervals_clean": {
+      "main": [
+        [
+          {
+            "node": "SplitInBatches",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "api_call_task": {
+      "main": [
+        [
+          {
+            "node": "IF1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fun_split",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "Function1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SplitInBatches": {
+      "main": [
+        [
+          {
+            "node": "fun_wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF1": {
+      "main": [
+        [
+          {
+            "node": "Function3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SplitInBatches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fun_split": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fun_wait": {
+      "main": [
+        [
+          {
+            "node": "api_call_task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "COMBINATO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMBINATO": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "api_call_task2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "api_call_task1": {
+      "main": [
+        [
+          {
+            "node": "fun_time_intervals_clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "api_call_task2": {
+      "main": [
+        [
+          {
+            "node": "fun_time_intervals_clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": 1,
+  "tags": [
+    {
+      "id": "1",
+      "name": "clickup",
+      "createdAt": "2022-08-01T14:22:36.895Z",
+      "updatedAt": "2022-08-01T14:22:36.895Z"
+    },
+    {
+      "id": "2",
+      "name": "aliga",
+      "createdAt": "2022-08-01T14:22:42.551Z",
+      "updatedAt": "2022-08-01T14:22:42.551Z"
+    }
+  ]
+}
